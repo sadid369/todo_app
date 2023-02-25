@@ -18,6 +18,8 @@ class TodoHome extends ConsumerStatefulWidget {
 
 class _TodoHomeState extends ConsumerState<TodoHome> {
   final TextEditingController textEditingController = TextEditingController();
+  TextEditingController? updateTextController;
+
   final GlobalKey _fromKey = GlobalKey<FormState>();
   String text = 'Nothing';
   List<Todo> todoList = [];
@@ -33,6 +35,7 @@ class _TodoHomeState extends ConsumerState<TodoHome> {
       setState(() {
         todoList.add(Todo.fromMap(jsonDecode(res.body)));
       });
+      textEditingController.clear();
     } catch (e) {
       print("$e from here");
     }
@@ -53,6 +56,50 @@ class _TodoHomeState extends ConsumerState<TodoHome> {
     }
   }
 
+  Future<String?> openDialog(
+      {required String? prefixText,
+      required TextEditingController updateText}) {
+    updateTextController = updateText;
+    return showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: Text("Update Tod"),
+              content: TextFormField(
+                controller: updateTextController,
+                autofocus: true,
+                decoration: InputDecoration(),
+              ),
+              actions: [
+                TextButton(onPressed: update, child: const Text("Update"))
+              ],
+            ));
+  }
+
+  void update() {
+    Navigator.of(context).pop(updateTextController!.text);
+  }
+
+  void updateTodo({required String id, required String updatedText}) async {
+    try {
+      // Todo todo = Todo(todo: "", id: "");
+      http.Response res = await http.patch(
+        Uri.parse("$uri/"),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: Todo(todo: updatedText, id: id).toJson(),
+      );
+      print(res.body);
+      var todoIndex = todoList
+          .indexWhere((element) => element.id == jsonDecode(res.body)["_id"]);
+      setState(() {
+        todoList[todoIndex] = Todo.fromMap(jsonDecode(res.body));
+      });
+    } catch (e) {
+      print(e);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,6 +110,7 @@ class _TodoHomeState extends ConsumerState<TodoHome> {
   void dispose() {
     super.dispose();
     textEditingController.dispose();
+    updateTextController!.dispose();
   }
 
   @override
@@ -84,9 +132,9 @@ class _TodoHomeState extends ConsumerState<TodoHome> {
                   key: _fromKey,
                   child: TextFormField(
                     controller: textEditingController,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                    ),
+                    // decoration: InputDecoration(
+                    //   border: const OutlineInputBorder(),
+                    // ),
                     validator: (value) {
                       if (value == null) {
                         return "Please Enter Something";
@@ -120,15 +168,25 @@ class _TodoHomeState extends ConsumerState<TodoHome> {
                         width: 100,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.end,
-                          children: const [
-                            Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Icon(Icons.delete),
+                          children: [
+                            IconButton(
+                              onPressed: () {},
+                              icon: const Icon(Icons.delete),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Icon(Icons.edit),
-                            ),
+                            IconButton(
+                                onPressed: () async {
+                                  final update = await openDialog(
+                                      updateText: TextEditingController(
+                                          text: todoList[index].todo),
+                                      prefixText: todoList[index].todo);
+                                  if (update == null || update.isEmpty) {
+                                    return print('Empty');
+                                  }
+                                  updateTodo(
+                                      id: todoList[index].id,
+                                      updatedText: update);
+                                },
+                                icon: const Icon(Icons.edit)),
                           ],
                         ),
                       ),

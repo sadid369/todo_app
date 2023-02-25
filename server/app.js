@@ -19,12 +19,17 @@ app.post("/", async (req, res) => {
   res.json(newTodo);
 });
 app.patch("/", async (req, res) => {
-  const { id } = req.body;
+  const { id, todo } = req.body;
   console.log(id);
-  const updatedId = await MyTodo.findByIdAndUpdate(id, {
-    todo: "Test Updated",
-  });
+  const updatedId = await MyTodo.findByIdAndUpdate(
+    id,
+    {
+      todo,
+    },
+    { returnDocument: "after" }
+  );
   console.log(updatedId);
+  res.json(updatedId);
 });
 app.delete("/", async (req, res) => {
   const { id } = req.body;
